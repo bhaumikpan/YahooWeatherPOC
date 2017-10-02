@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.bhaumik.yahooweatherpoc.model.Query;
 import com.bhaumik.yahooweatherpoc.model.query.result.Channel;
+import com.bhaumik.yahooweatherpoc.model.query.result.channel.Weather;
 import com.bhaumik.yahooweatherpoc.server.util.YahooResponse;
 import com.bhaumik.yahooweatherpoc.server.util.YahooRetrofit;
 import com.google.gson.Gson;
@@ -28,25 +29,34 @@ public class YahooServer {
 
     private YahooServer() {}
 
-    public void getWeather(String city){
-//where woeid in (select woeid from geo.places(1) where text="nome, ak")
-        String query =  "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text=\"" + city + "\")";
+    public void getWeather(final String requestLocation, final IServerCallBack callBack){
+
+        String query =  "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text=\"" + requestLocation + "\")";
 
         Call<YahooResponse> call = YahooRetrofit.getInstance().getYahooApi().queryYahoo(query, "json");
         Log.d("BMK", ""+call.request().toString());
         call.enqueue(new Callback<YahooResponse>() {
             @Override
             public void onResponse(Call<YahooResponse> call, retrofit2.Response<YahooResponse> response) {
-                if(response.isSuccessful()){
-                    Log.d("BMK", "WEATHER NOW "+response.body().getQuery().getResults().getChannel().getDescription());
+                Channel requestChannel = null ;
+                if(response.isSuccessful() && response.body() != null){
+                  //  Log.d("BMK", "WEATHER NOW "+response.body().getQuery().getResults().getChannel().getDescription());
+                    if(response.body().getQuery() != null){
+                        requestChannel = response.body().getQuery().getResults().getChannel();
+                    }
                 }
+                callBack.WeatherCallback(response.isSuccessful(), requestLocation,  requestChannel, null);
             }
 
             @Override
             public void onFailure(Call<YahooResponse> call, Throwable t) {
-
+                callBack.WeatherCallback(false, requestLocation, null, t.getMessage());
             }
         });
+    }
+
+    public interface IServerCallBack{
+        void WeatherCallback(boolean success, String requestLocation, Channel channel, String errorMessage);
     }
 
 }
